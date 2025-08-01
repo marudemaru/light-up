@@ -101,7 +101,7 @@ void loop() {
     
     // 光1
     int dist1 = (i - flowPosition1 + NUM_LEDS) % NUM_LEDS;
-    if (dist1 < 10) {
+    if (dist1 < 20) {
       int bright = map(dist1, 0, 4, 255, 50);
       CRGB c = COMMON_COL[currentColorIndex1];
       c.nscale8(bright);
@@ -109,7 +109,7 @@ void loop() {
     }
     // 光2
     int dist2 = (i - flowPosition2 + NUM_LEDS) % NUM_LEDS;
-    if (dist2 < 10) {
+    if (dist2 < 20) {
       int bright = map(dist2, 0, 4, 255, 50);
       CRGB c = COMMON_COL[currentColorIndex2];
       c.nscale8(bright);
@@ -117,7 +117,7 @@ void loop() {
     }
     // 光3
     int dist3 = (i - flowPosition3 + NUM_LEDS) % NUM_LEDS;
-    if (dist3 < 10) {
+    if (dist3 < 20) {
       int bright = map(dist3, 0, 4, 255, 50);
       CRGB c = COMMON_COL[currentColorIndex3];
       c.nscale8(bright);
@@ -125,7 +125,7 @@ void loop() {
     }
     // 光4
     int dist4 = (i - flowPosition4 + NUM_LEDS) % NUM_LEDS;
-    if (dist4 < 10) {
+    if (dist4 < 20) {
       int bright = map(dist4, 0, 4, 255, 50);
       CRGB c = COMMON_COL[currentColorIndex4];
       c.nscale8(bright);
