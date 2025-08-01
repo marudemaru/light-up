@@ -128,7 +128,7 @@ CRGB color = CRGB::Red;
 
 void loop() {
   // テキストを定義
-  const char* text = "Welcome to Shikidalab! and shikhar";
+  const char* text = "Welcome to Shikidalab and Shikharlab!";
 
   // マトリックスをクリア
   FastLED.clear();
