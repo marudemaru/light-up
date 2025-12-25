@@ -4,145 +4,122 @@
 // --- 基本設定 ---
 #define DATA_PIN 6      // ピン番号
 #define NUM_LEDS 300    // LEDの数
-#define BRIGHTNESS 64   // 明るさ (0-255)
+#define BRIGHTNESS 64  // 最大の明るさ
 
-// --- 流れる光の設定（クリスマスカラー：赤、緑、金、雪） ---
+// --- 色の設定（クリスマスカラー4色） ---
+// ちょうど4つの光があるので、4色を循環させます
 const CRGB COMMON_COL[] = {
-    CRGB::Red,      // 赤
-    CRGB::Green,    // 緑
-    CRGB::Gold,     // 金
-    CRGB::Snow,     // 雪（白）
-    CRGB::Red,      // 赤（繰り返し）
-    CRGB::Green     // 緑（繰り返し）
+    CRGB::Red,      // 0: 赤
+    CRGB::Green,    // 1: 緑
+    CRGB::Gold,     // 2: 金
+    CRGB::Snow      // 3: 白
 };
 const int COMMON_COL_SIZE = sizeof(COMMON_COL) / sizeof(COMMON_COL[0]);
 
-// 各光の設定
-#define CHANGETIME1 1000
-#define FLOW_SPEED1 20
-#define CHANGETIME2 1000
-#define FLOW_SPEED2 60
-#define CHANGETIME3 1000
-#define FLOW_SPEED3 100
-#define CHANGETIME4 1000
-#define FLOW_SPEED4 150
-
-// --- 背景の設定（ツリーや飾りを意識した色） ---
-#define BG_CHANGETIME 10000
-const CRGB BG_COL[] = {
-    CRGB::DarkGreen,      // 濃い緑（モミの木イメージ）
-    CRGB::Maroon,         // 茶色っぽい赤
-    CRGB::Gold,           // 金色
-    CRGB::DarkOliveGreen, // 深いオリーブ色
-    CRGB::Red,            // 赤
-    CRGB::Silver          // 銀色
-};
-const int BG_COL_SIZE = sizeof(BG_COL) / sizeof(BG_COL[0]);
+// 色が変わる時間（2秒ごとに色が隣へ移動）
+#define CHANGETIME 2000
 
 // --- グローバル変数 ---
 CRGB leds[NUM_LEDS];
 
-// 流れる光用の変数
-unsigned long lastColorChangeTime1 = 0, lastFlowTime1 = 0;
-int currentColorIndex1 = 0, flowPosition1 = 0;
-unsigned long lastColorChangeTime2 = 0, lastFlowTime2 = 0;
-int currentColorIndex2 = 0, flowPosition2 = 0;
-unsigned long lastColorChangeTime3 = 0, lastFlowTime3 = 0;
-int currentColorIndex3 = 0, flowPosition3 = 0;
-unsigned long lastColorChangeTime4 = 0, lastFlowTime4 = 0;
-int currentColorIndex4 = 0, flowPosition4 = 0;
+// 光の中心位置（300個を4等分）
+int pos1 = 38;
+int pos2 = 113;
+int pos3 = 188;
+int pos4 = 263;
 
-// 背景アニメーション用の変数
-char bg_br[NUM_LEDS];
-char bg_br_delta[NUM_LEDS];
-unsigned long bg_last_change_time = 0;
-int bg_current_index = 0;
+// 光の広がる範囲
+#define LIGHT_RADIUS 65 
+
+// 色管理用の変数（初期値をズラしています）
+unsigned long lastColorChangeTime = 0;
+// ここで +1, +2, +3 することで、最初から全員違う色になります
+int colorIndexOffset1 = 0;
+int colorIndexOffset2 = 1;
+int colorIndexOffset3 = 2;
+int colorIndexOffset4 = 3;
 
 // --- 初期設定 ---
 void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
-
-  // 背景アニメーションの初期化
-  for (int i = 0; i < NUM_LEDS; i++) {
-    bg_br[i] = random(BRIGHTNESS);
-    bg_br_delta[i] = 1;
-  }
 }
 
 // --- メインループ ---
 void loop() {
-  // === 状態更新 ===
-  // 流れる光の状態更新
-  if (millis() - lastColorChangeTime1 > CHANGETIME1) { lastColorChangeTime1 = millis(); currentColorIndex1 = (currentColorIndex1 + 1) % COMMON_COL_SIZE; }
-  if (millis() - lastFlowTime1 > FLOW_SPEED1) { lastFlowTime1 = millis(); flowPosition1 = (flowPosition1 + 1) % NUM_LEDS; }
+  unsigned long currentMillis = millis();
+  FastLED.clear(); // 毎回リセット
 
-  if (millis() - lastColorChangeTime2 > CHANGETIME2) { lastColorChangeTime2 = millis(); currentColorIndex2 = (currentColorIndex2 + 1) % COMMON_COL_SIZE; }
-  if (millis() - lastFlowTime2 > FLOW_SPEED2) { lastFlowTime2 = millis(); flowPosition2 = (flowPosition2 + 1) % NUM_LEDS; }
+  // === 1. 時間で色を更新 ===
+  // 一定時間ごとに、全体の色の基準（ベース）を1つ進めます
+  // これにより、色が「赤→緑→金→白」と順番に回っていきます
+  int baseIndex = (currentMillis / CHANGETIME) % COMMON_COL_SIZE;
 
-  if (millis() - lastColorChangeTime3 > CHANGETIME3) { lastColorChangeTime3 = millis(); currentColorIndex3 = (currentColorIndex3 + 1) % COMMON_COL_SIZE; }
-  if (millis() - lastFlowTime3 > FLOW_SPEED3) { lastFlowTime3 = millis(); flowPosition3 = (flowPosition3 + 1) % NUM_LEDS; }
+  // === 2. 描画処理 ===
 
-  if (millis() - lastColorChangeTime4 > CHANGETIME4) { lastColorChangeTime4 = millis(); currentColorIndex4 = (currentColorIndex4 + 1) % COMMON_COL_SIZE; }
-  if (millis() - lastFlowTime4 > FLOW_SPEED4) { lastFlowTime4 = millis(); flowPosition4 = (flowPosition4 + 1) % NUM_LEDS; }
-
-  // 背景色の状態更新
-  if (millis() - bg_last_change_time > BG_CHANGETIME) {
-    bg_last_change_time = millis();
-    bg_current_index = (bg_current_index + 1) % BG_COL_SIZE;
-  }
-  // 背景色の取得（HSV変換して輝度調整しやすくする）
-  CHSV hsvBgColor = rgb2hsv_approximate(BG_COL[bg_current_index]);
-
-  // --- LEDの描画処理 ---
+  // --- エリア1 ---
+  // 色の決定: (基準の時間 + 個別のズレ) を色の数で割った余り
+  int idx1 = (baseIndex + colorIndexOffset1) % COMMON_COL_SIZE;
+  // 点滅: BPM 40（ゆっくりめ）
+  int b1 = beatsin8(60, 40, 255); 
+  
   for (int i = 0; i < NUM_LEDS; i++) {
-    // 1. 背景のキラキラを描画
-    bg_br[i] += bg_br_delta[i];
-    if (bg_br_delta[i] > 0 && bg_br[i] >= BRIGHTNESS - 1) {
-      bg_br_delta[i] = -1;
-    } else if (bg_br_delta[i] < 0 && bg_br[i] <= 20) { // 下限を少し下げて明暗をはっきりさせる
-      bg_br_delta[i] = 1;
+    int dist = abs(i - pos1);
+    if (dist < LIGHT_RADIUS) {
+      CRGB c = COMMON_COL[idx1];
+      int falloff = map(dist, 0, LIGHT_RADIUS, 255, 0); // 中心ほど明るく
+      c.nscale8(falloff);
+      c.nscale8(b1); // 点滅適用
+      leds[i] += c;
     }
-    CRGB bgColor = CHSV(hsvBgColor.hue, hsvBgColor.sat, bg_br[i]);
+  }
 
-    // 2. 流れる光の色を計算
-    CRGB cometColor = CRGB::Black;
-    
-    // 光1
-    int dist1 = (i - flowPosition1 + NUM_LEDS) % NUM_LEDS;
-    if (dist1 < 20) {
-      int bright = map(dist1, 0, 4, 255, 50);
-      CRGB c = COMMON_COL[currentColorIndex1];
-      c.nscale8(bright);
-      cometColor += c;
-    }
-    // 光2
-    int dist2 = (i - flowPosition2 + NUM_LEDS) % NUM_LEDS;
-    if (dist2 < 20) {
-      int bright = map(dist2, 0, 4, 255, 50);
-      CRGB c = COMMON_COL[currentColorIndex2];
-      c.nscale8(bright);
-      cometColor += c;
-    }
-    // 光3
-    int dist3 = (i - flowPosition3 + NUM_LEDS) % NUM_LEDS;
-    if (dist3 < 20) {
-      int bright = map(dist3, 0, 4, 255, 50);
-      CRGB c = COMMON_COL[currentColorIndex3];
-      c.nscale8(bright);
-      cometColor += c;
-    }
-    // 光4
-    int dist4 = (i - flowPosition4 + NUM_LEDS) % NUM_LEDS;
-    if (dist4 < 20) {
-      int bright = map(dist4, 0, 4, 255, 50);
-      CRGB c = COMMON_COL[currentColorIndex4];
-      c.nscale8(bright);
-      cometColor += c;
-    }
+  // --- エリア2 ---
+  int idx2 = (baseIndex + colorIndexOffset2) % COMMON_COL_SIZE;
+  // 点滅: BPM 55（少し速い）
+  int b2 = beatsin8(60, 40, 255);
 
-    // 3. 背景色と光の色を合成
-    leds[i] = bgColor + cometColor;
+  for (int i = 0; i < NUM_LEDS; i++) {
+    int dist = abs(i - pos2);
+    if (dist < LIGHT_RADIUS) {
+      CRGB c = COMMON_COL[idx2];
+      int falloff = map(dist, 0, LIGHT_RADIUS, 255, 0);
+      c.nscale8(falloff);
+      c.nscale8(b2);
+      leds[i] += c;
+    }
+  }
+
+  // --- エリア3 ---
+  int idx3 = (baseIndex + colorIndexOffset3) % COMMON_COL_SIZE;
+  // 点滅: BPM 45（普通）
+  int b3 = beatsin8(60, 40, 255);
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+    int dist = abs(i - pos3);
+    if (dist < LIGHT_RADIUS) {
+      CRGB c = COMMON_COL[idx3];
+      int falloff = map(dist, 0, LIGHT_RADIUS, 255, 0);
+      c.nscale8(falloff);
+      c.nscale8(b3);
+      leds[i] += c;
+    }
+  }
+
+  // --- エリア4 ---
+  int idx4 = (baseIndex + colorIndexOffset4) % COMMON_COL_SIZE;
+  // 点滅: BPM 60（速い）
+  int b4 = beatsin8(60, 40, 255);
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+    int dist = abs(i - pos4);
+    if (dist < LIGHT_RADIUS) {
+      CRGB c = COMMON_COL[idx4];
+      int falloff = map(dist, 0, LIGHT_RADIUS, 255, 0);
+      c.nscale8(falloff);
+      c.nscale8(b4);
+      leds[i] += c;
+    }
   }
 
   FastLED.show();
